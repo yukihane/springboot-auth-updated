@@ -2,8 +2,11 @@ package com.auth0.samples.authapi.springbootauthupdated.security;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.samples.authapi.springbootauthupdated.user.ApplicationUser;
+import com.auth0.samples.authapi.springbootauthupdated.user.ApplicationUserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
@@ -20,8 +23,11 @@ import static com.auth0.samples.authapi.springbootauthupdated.security.SecurityC
 
 public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
 
-    public JWTAuthorizationFilter(AuthenticationManager authManager) {
+    private final ApplicationUserRepository applicationUserRepository;
+
+    public JWTAuthorizationFilter(AuthenticationManager authManager, ApplicationUserRepository applicationUserRepository) {
         super(authManager);
+        this.applicationUserRepository = applicationUserRepository;
     }
 
     @Override
@@ -35,13 +41,15 @@ public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
             return;
         }
 
-        UsernamePasswordAuthenticationToken authentication = getAuthentication(req);
+        String username = getUsername(req);
+        ApplicationUser applicationUser = applicationUserRepository.findByUsername(username);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(applicationUser, null, new ArrayList<>());
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         chain.doFilter(req, res);
     }
 
-    private UsernamePasswordAuthenticationToken getAuthentication(HttpServletRequest request) {
+    private String getUsername(HttpServletRequest request) {
         String token = request.getHeader(HEADER_STRING);
         if (token != null) {
             // parse the token.
@@ -50,10 +58,7 @@ public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
                     .verify(token.replace(TOKEN_PREFIX, ""))
                     .getSubject();
 
-            if (user != null) {
-                return new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
-            }
-            return null;
+            return user;
         }
         return null;
     }
