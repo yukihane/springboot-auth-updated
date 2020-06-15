@@ -2,6 +2,7 @@ package com.auth0.samples.authapi.springbootauthupdated.security;
 
 import com.auth0.jwt.JWT;
 import com.auth0.samples.authapi.springbootauthupdated.user.ApplicationUser;
+import com.auth0.samples.authapi.springbootauthupdated.user.ApplicationUserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,9 +27,12 @@ import static com.auth0.samples.authapi.springbootauthupdated.security.SecurityC
 
 public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
     private AuthenticationManager authenticationManager;
+    private ApplicationUserRepository applicationUserRepository;
 
-    public JWTAuthenticationFilter(AuthenticationManager authenticationManager) {
+    public JWTAuthenticationFilter(AuthenticationManager authenticationManager,
+        ApplicationUserRepository applicationUserRepository) {
         this.authenticationManager = authenticationManager;
+        this.applicationUserRepository = applicationUserRepository;
     }
 
     @Override
@@ -60,5 +64,10 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                 .withExpiresAt(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .sign(HMAC512(SECRET.getBytes()));
         res.addHeader(HEADER_STRING, TOKEN_PREFIX + token);
+
+        ApplicationUser user = applicationUserRepository.findByUsername(auth.getName());
+        String json = new ObjectMapper().writeValueAsString(user);
+        res.getWriter().write(json);
+        res.flushBuffer();
     }
 }
